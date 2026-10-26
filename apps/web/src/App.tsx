@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
-import { Route, Routes } from 'react-router-dom';
+import { Route, Routes, useLocation } from 'react-router-dom';
+import { AnimatePresence, MotionConfig, motion } from 'motion/react';
 import { api } from './lib/api.ts';
 import { startLive } from './lib/live.ts';
 import { Shell } from './components/Shell.tsx';
@@ -15,6 +16,36 @@ import { Orchestrate } from './pages/Orchestrate.tsx';
 
 // React Flow est chargé à la demande : la vue d'ensemble reste légère sur iPhone.
 const Graph = lazy(() => import('./pages/Graph.tsx'));
+
+/** Transition de page : fondu et léger glissement, sans bloquer l'affichage de la page suivante. */
+function AnimatedRoutes() {
+  const location = useLocation();
+  // Les sous-pages d'une même section ne rejouent pas la transition.
+  const key = location.pathname.split('/')[1] || 'home';
+  return (
+    <AnimatePresence mode="popLayout" initial={false}>
+      <motion.div
+        key={key}
+        className="h-full"
+        initial={{ opacity: 0, y: 6, filter: 'blur(2px)' }}
+        animate={{ opacity: 1, y: 0, filter: 'blur(0px)', transitionEnd: { filter: 'none' } }}
+        exit={{ opacity: 0, transition: { duration: 0.12 } }}
+        transition={{ duration: 0.32, ease: [0.16, 1, 0.3, 1] }}
+      >
+        <Routes location={location}>
+          <Route path="/" element={<Overview />} />
+          <Route path="/graph" element={<Graph />} />
+          <Route path="/sessions/:id" element={<SessionDetail />} />
+          <Route path="/timeline" element={<Timeline />} />
+          <Route path="/orchestrate" element={<Orchestrate />} />
+          <Route path="/machines" element={<Machines />} />
+          <Route path="/audit" element={<Audit />} />
+          <Route path="*" element={<Overview />} />
+        </Routes>
+      </motion.div>
+    </AnimatePresence>
+  );
+}
 
 export function App() {
   const [user, setUser] = useState<string | null | undefined>(undefined);
@@ -32,21 +63,14 @@ export function App() {
   if (!user) return <Login onLogin={setUser} />;
 
   return (
+    <MotionConfig reducedMotion="user">
     <DialogProvider>
       <Shell user={user}>
         <Suspense fallback={<div className="h-full grid place-items-center text-faint"><Spinner /></div>}>
-          <Routes>
-            <Route path="/" element={<Overview />} />
-            <Route path="/graph" element={<Graph />} />
-            <Route path="/sessions/:id" element={<SessionDetail />} />
-            <Route path="/timeline" element={<Timeline />} />
-            <Route path="/orchestrate" element={<Orchestrate />} />
-            <Route path="/machines" element={<Machines />} />
-            <Route path="/audit" element={<Audit />} />
-            <Route path="*" element={<Overview />} />
-          </Routes>
+          <AnimatedRoutes />
         </Suspense>
       </Shell>
     </DialogProvider>
+    </MotionConfig>
   );
 }

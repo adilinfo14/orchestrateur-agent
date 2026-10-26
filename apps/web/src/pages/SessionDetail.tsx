@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import { AnimatePresence, motion } from 'motion/react';
 import {
   ArrowLeft, Bot, CheckCircle2, CircleSlash, Clock, FileCode2, Info, KeyRound, OctagonX, Pause, Send, ShieldCheck, ShieldX, Wrench, XCircle,
 } from 'lucide-react';
@@ -9,6 +10,7 @@ import { COMMAND_LABEL, sendCommand } from '../lib/commands.ts';
 import { ago, clock, cx, PLATFORM_LABEL, shortPath, SOURCE_LABEL, useNow } from '../lib/format.ts';
 import { useLive, type Session } from '../lib/live.ts';
 import { EventRow } from '../components/EventRow.tsx';
+import { EventList } from '../components/EventList.tsx';
 import { useDialogs } from '../components/dialogs.tsx';
 import { Badge, Button, Empty, Kbd, Panel, Spinner, StatusPill } from '../components/ui.tsx';
 
@@ -200,13 +202,19 @@ export function SessionDetail() {
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-5">
         <div className="min-w-0 space-y-5">
           {/* Validations en attente */}
+          <AnimatePresence initial={false}>
           {session.status === 'waiting' && (
-            <div className="rounded-xl border border-waiting/30 bg-waiting/[0.04] p-4 glow-waiting animate-slide-up">
+            <motion.div key="waiting" className="rounded-xl border border-waiting/30 bg-waiting/[0.04] p-4 glow-waiting"
+              initial={{ opacity: 0, height: 0, marginBottom: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0, paddingTop: 0, paddingBottom: 0 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 38 }}>
               <div className="flex items-center gap-2 text-waiting text-[13px] font-medium"><KeyRound size={15} /> {session.waitingFor ?? 'La session attend une réponse'}</div>
               {pending.length > 0 ? (
                 <div className="mt-3 space-y-2">
+                  <AnimatePresence initial={false}>
                   {pending.map((p) => (
-                    <div key={p.requestId} className="rounded-lg border border-line bg-panel p-3">
+                    <motion.div key={p.requestId} layout className="rounded-lg border border-line bg-panel p-3"
+                      initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.98, transition: { duration: 0.15 } }}
+                      transition={{ type: 'spring', stiffness: 500, damping: 38 }}>
                       <div className="flex items-center justify-between gap-2">
                         <span className="text-[12.5px] font-medium">{p.toolName}</span>
                         <span className="text-[11px] text-faint">{ago(p.ts, now)}</span>
@@ -216,8 +224,9 @@ export function SessionDetail() {
                         <Button size="sm" variant="danger" disabled={busy || !machineReady} onClick={() => respond(p.requestId, p.toolName, p.input, 'deny')}><ShieldX size={13} /> Refuser</Button>
                         <Button size="sm" variant="primary" disabled={busy || !machineReady} onClick={() => respond(p.requestId, p.toolName, p.input, 'allow')}><ShieldCheck size={13} /> Autoriser</Button>
                       </div>
-                    </div>
+                    </motion.div>
                   ))}
+                  </AnimatePresence>
                 </div>
               ) : (
                 <p className="mt-2 text-[12px] text-muted leading-relaxed">
@@ -225,8 +234,9 @@ export function SessionDetail() {
                   Le cockpit ne contourne pas les demandes d’autorisation de Claude Code.
                 </p>
               )}
-            </div>
+            </motion.div>
           )}
+          </AnimatePresence>
 
           {/* Envoi d'instructions */}
           <div className="rounded-xl border border-line bg-panel">
@@ -268,14 +278,14 @@ export function SessionDetail() {
                   tab === t.key ? 'text-fg' : 'text-muted hover:text-fg',
                 )}>
                   {t.label}{t.count !== undefined && t.count > 0 && <span className="ml-1.5 text-faint tabular">{t.count}</span>}
-                  {tab === t.key && <span className="absolute inset-x-2 -bottom-px h-px bg-accent" />}
+                  {tab === t.key && <motion.span layoutId="session-tab" className="absolute inset-x-2 -bottom-px h-[1.5px] rounded-full bg-accent" transition={{ type: 'spring', stiffness: 560, damping: 42 }} />}
                 </button>
               ))}
             </div>
-            <div className="rounded-b-xl border border-t-0 border-line bg-panel min-h-[200px]">
+            <motion.div key={tab} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }} className="rounded-b-xl border border-t-0 border-line bg-panel min-h-[200px]">
               {tab === 'history' && (
                 <div className="py-1">
-                  {events.length ? events.map((e) => <EventRow key={e.id} event={e} showSession={false} />) : <Empty title="Aucun événement collecté" />}
+                  {events.length ? <EventList events={events} showSession={false} /> : <Empty title="Aucun événement collecté" />}
                   {events.length > 0 && !exhausted && (
                     <div className="p-3 flex justify-center"><Button size="sm" variant="ghost" onClick={loadMore} disabled={loadingMore}>{loadingMore ? <Spinner /> : 'Charger l’historique plus ancien'}</Button></div>
                   )}
@@ -329,7 +339,7 @@ export function SessionDetail() {
                   </li>
                 ))}</ul>
               ) : <Empty title="Aucune commande envoyée" />)}
-            </div>
+            </motion.div>
           </div>
         </div>
 

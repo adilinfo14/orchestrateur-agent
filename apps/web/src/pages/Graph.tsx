@@ -2,6 +2,7 @@ import { memo, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Background, BackgroundVariant, Controls, Handle, MiniMap, Position, ReactFlow, ReactFlowProvider, type Edge, type Node, type NodeProps } from '@xyflow/react';
 import { Bot, ExternalLink, KeyRound, Search, Sparkles, X } from 'lucide-react';
+import { AnimatePresence, motion } from 'motion/react';
 import type { AgentView, MachineView } from '../../../../packages/protocol/src/index.ts';
 import { ago, cx, PLATFORM_LABEL, STATUS, useNow } from '../lib/format.ts';
 import { useLive, type Session } from '../lib/live.ts';
@@ -17,8 +18,8 @@ const SessionNode = memo(function SessionNode({ data, selected }: NodeProps<Node
   const s = data.session;
   const glow = s.status === 'working' ? 'glow-working' : s.status === 'waiting' ? 'glow-waiting' : s.status === 'error' ? 'glow-error' : '';
   return (
-    <div className={cx(
-      'w-[230px] rounded-xl border bg-panel px-3.5 py-3 transition-[opacity,border-color] duration-300',
+    <motion.div initial={{ opacity: 0, scale: 0.92 }} animate={{ opacity: 1, scale: 1 }} transition={{ type: 'spring', stiffness: 420, damping: 32 }} className={cx(
+      'w-[230px] rounded-xl border bg-panel px-3.5 py-3 transition-[opacity,border-color] duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]',
       selected ? 'border-accent' : 'border-line-strong', glow, data.dim && 'opacity-25', s.status === 'ended' && 'opacity-50',
     )}>
       <Handle type="source" position={Position.Bottom} className="!opacity-0" />
@@ -34,7 +35,7 @@ const SessionNode = memo(function SessionNode({ data, selected }: NodeProps<Node
           : s.status === 'working' && s.lastTool ? <span className="text-working mono">{s.lastTool}</span>
           : STATUS[s.status].label}
       </div>
-    </div>
+    </motion.div>
   );
 });
 
@@ -42,14 +43,14 @@ const AgentNode = memo(function AgentNode({ data, selected }: NodeProps<Node<Age
   const a = data.agent;
   const running = a.status === 'running' && !data.parentEnded;
   return (
-    <div className={cx(
-      'flex items-center gap-1.5 rounded-full border bg-raised pl-2 pr-2.5 h-7 text-[11px] whitespace-nowrap transition-opacity duration-300',
+    <motion.div initial={{ opacity: 0, scale: 0.5 }} animate={{ opacity: 1, scale: 1 }} transition={{ type: 'spring', stiffness: 500, damping: 26 }} className={cx(
+      'flex items-center gap-1.5 rounded-full border bg-raised pl-2 pr-2.5 h-7 text-[11px] whitespace-nowrap transition-[opacity,border-color] duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]',
       selected ? 'border-accent' : running ? 'border-working/50 glow-working' : 'border-line', data.dim && 'opacity-25',
     )}>
       <Handle type="target" position={Position.Top} className="!opacity-0" />
       <Bot size={12} className={running ? 'text-working' : 'text-faint'} />
       <span className={running ? 'text-fg' : 'text-muted'}>{a.agentType ?? 'sous-agent'}</span>
-    </div>
+    </motion.div>
   );
 });
 
@@ -128,7 +129,8 @@ function Inspector({ id, onClose }: { id: string; onClose: () => void }) {
   const machine = useLive((st) => (s ? st.machines.get(s.machineId) : undefined));
   if (!s) return null;
   return (
-    <div className="absolute right-3 top-3 bottom-3 w-[320px] max-w-[calc(100%-24px)] rounded-xl border border-line-strong bg-panel/95 backdrop-blur shadow-2xl shadow-black/50 flex flex-col animate-slide-up z-10">
+    <motion.div initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 16, transition: { duration: 0.15 } }} transition={{ type: 'spring', stiffness: 460, damping: 38 }}
+      className="absolute right-3 top-3 bottom-3 w-[320px] max-w-[calc(100%-24px)] rounded-xl border border-line-strong bg-panel/95 backdrop-blur shadow-2xl shadow-black/50 flex flex-col z-10">
       <div className="flex items-center justify-between px-4 h-11 border-b border-line">
         <span className="text-[12px] font-medium text-muted">{a ? 'Sous-agent' : 'Session'}</span>
         <button onClick={onClose} className="p-1 rounded text-faint hover:text-fg hover:bg-hover"><X size={14} /></button>
@@ -156,7 +158,7 @@ function Inspector({ id, onClose }: { id: string; onClose: () => void }) {
       <div className="mt-auto p-3 border-t border-line">
         <Link to={`/sessions/${s.id}`} className="flex items-center justify-center gap-1.5 h-8 rounded-md bg-fg text-bg text-[12.5px] font-medium hover:bg-white">Ouvrir la session <ExternalLink size={13} /></Link>
       </div>
-    </div>
+    </motion.div>
   );
 }
 
@@ -199,7 +201,7 @@ function GraphInner() {
           <Empty title="Aucune session à afficher">Les sessions détectées par les collecteurs apparaîtront ici.</Empty>
         ) : (
           <ReactFlow
-            nodes={nodes} edges={edges} nodeTypes={nodeTypes} fitView fitViewOptions={{ padding: 0.15, maxZoom: 1.1 }} minZoom={0.15} maxZoom={2}
+            nodes={nodes} edges={edges} nodeTypes={nodeTypes} fitView fitViewOptions={{ padding: 0.15, maxZoom: 1.1, duration: 500 }} minZoom={0.15} maxZoom={2}
             nodesConnectable={false} nodesDraggable={false} onlyRenderVisibleElements proOptions={{ hideAttribution: true }}
             onNodeClick={(_, n) => n.type !== 'group' && setSelected(n.id)} onPaneClick={() => setSelected(null)}
           >
@@ -208,7 +210,7 @@ function GraphInner() {
             <MiniMap pannable zoomable nodeColor={(n) => (n.type === 'session' ? '#3a3f47' : n.type === 'agent' ? '#2a2e35' : 'transparent')} maskColor="#08090bcc" className="!hidden md:!block" />
           </ReactFlow>
         )}
-        {selected && <Inspector id={selected} onClose={() => setSelected(null)} />}
+        <AnimatePresence>{selected && <Inspector key={selected} id={selected} onClose={() => setSelected(null)} />}</AnimatePresence>
       </div>
     </div>
   );

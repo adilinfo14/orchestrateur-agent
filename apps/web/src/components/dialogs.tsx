@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { AlertTriangle, CheckCircle2, Info, XCircle } from 'lucide-react';
+import { AnimatePresence, motion } from 'motion/react';
 import { Button } from './ui.tsx';
 import { cx } from '../lib/format.ts';
 
@@ -39,32 +40,41 @@ export function DialogProvider({ children }: { children: ReactNode }) {
   return (
     <Ctx.Provider value={{ confirm, toast }}>
       {children}
-      {pending && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-[2px] animate-fade-in p-4" onMouseDown={() => close(false)}>
-          <div role="dialog" aria-modal className="w-full max-w-md rounded-xl border border-line-strong bg-panel shadow-2xl shadow-black/60 animate-slide-up" onMouseDown={(e) => e.stopPropagation()}>
-            <div className="p-5">
-              <div className="flex items-start gap-3">
-                <div className={cx('mt-0.5 rounded-lg p-1.5', pending.danger ? 'bg-error/10 text-error' : 'bg-waiting/10 text-waiting')}><AlertTriangle size={16} /></div>
-                <div className="min-w-0">
-                  <h3 className="text-[14px] font-semibold">{pending.title}</h3>
-                  {pending.body && <div className="mt-1.5 text-[12.5px] text-muted leading-relaxed">{pending.body}</div>}
+      <AnimatePresence>
+        {pending && (
+          <motion.div key="confirm" className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-[2px] p-4" onMouseDown={() => close(false)}
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, transition: { duration: 0.15 } }} transition={{ duration: 0.18 }}>
+            <motion.div role="dialog" aria-modal className="w-full max-w-md rounded-xl border border-line-strong bg-panel shadow-2xl shadow-black/60" onMouseDown={(e) => e.stopPropagation()}
+              initial={{ opacity: 0, scale: 0.96, y: 12 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.97, y: 6, transition: { duration: 0.14 } }}
+              transition={{ type: 'spring', stiffness: 520, damping: 36 }}>
+              <div className="p-5">
+                <div className="flex items-start gap-3">
+                  <div className={cx('mt-0.5 rounded-lg p-1.5', pending.danger ? 'bg-error/10 text-error' : 'bg-waiting/10 text-waiting')}><AlertTriangle size={16} /></div>
+                  <div className="min-w-0">
+                    <h3 className="text-[14px] font-semibold">{pending.title}</h3>
+                    {pending.body && <div className="mt-1.5 text-[12.5px] text-muted leading-relaxed">{pending.body}</div>}
+                  </div>
                 </div>
               </div>
-            </div>
-            <div className="flex justify-end gap-2 border-t border-line px-5 py-3">
-              <Button variant="ghost" onClick={() => close(false)}>Annuler</Button>
-              <Button ref={btn} variant={pending.danger ? 'danger' : 'primary'} onClick={() => close(true)}>{pending.confirmLabel ?? 'Confirmer'}</Button>
-            </div>
-          </div>
-        </div>
-      )}
+              <div className="flex justify-end gap-2 border-t border-line px-5 py-3">
+                <Button variant="ghost" onClick={() => close(false)}>Annuler</Button>
+                <Button ref={btn} variant={pending.danger ? 'danger' : 'primary'} onClick={() => close(true)}>{pending.confirmLabel ?? 'Confirmer'}</Button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
       <div className="fixed z-50 bottom-20 sm:bottom-4 right-4 left-4 sm:left-auto flex flex-col gap-2 items-end pointer-events-none">
+        <AnimatePresence initial={false}>
         {toasts.map((t) => (
-          <div key={t.id} className="pointer-events-auto flex items-start gap-2 max-w-sm rounded-lg border border-line-strong bg-raised/95 backdrop-blur px-3 py-2.5 text-[12.5px] shadow-xl shadow-black/40 animate-slide-up">
+          <motion.div key={t.id} layout className="pointer-events-auto flex items-start gap-2 max-w-sm rounded-lg border border-line-strong bg-raised/95 backdrop-blur px-3 py-2.5 text-[12.5px] shadow-xl shadow-black/40"
+            initial={{ opacity: 0, y: 16, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, x: 24, transition: { duration: 0.18 } }}
+            transition={{ type: 'spring', stiffness: 520, damping: 34 }}>
             {t.tone === 'ok' ? <CheckCircle2 size={15} className="text-ok shrink-0 mt-px" /> : t.tone === 'error' ? <XCircle size={15} className="text-error shrink-0 mt-px" /> : <Info size={15} className="text-working shrink-0 mt-px" />}
             <span>{t.text}</span>
-          </div>
+          </motion.div>
         ))}
+        </AnimatePresence>
       </div>
     </Ctx.Provider>
   );

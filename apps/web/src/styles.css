@@ -26,20 +26,23 @@
   --color-ok: #3ecf8e;
   --color-ended: #3a3f47;
 
-  --animate-pulse-ring: pulse-ring 1.8s cubic-bezier(0.2, 0.6, 0.3, 1) infinite;
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out-soft: cubic-bezier(0.45, 0, 0.55, 1);
+
+  --animate-pulse-ring: pulse-ring 2.2s cubic-bezier(0.16, 1, 0.3, 1) infinite;
   --animate-fade-in: fade-in 0.22s ease-out both;
   --animate-slide-up: slide-up 0.26s cubic-bezier(0.2, 0.8, 0.2, 1) both;
-  --animate-shimmer: shimmer 2.4s linear infinite;
+  --animate-shimmer: shimmer 2.8s var(--ease-in-out-soft) infinite;
 }
 
 @keyframes pulse-ring {
-  0% { transform: scale(1); opacity: 0.55; }
-  80%, 100% { transform: scale(2.6); opacity: 0; }
+  0% { transform: scale(1); opacity: 0.5; }
+  70%, 100% { transform: scale(2.8); opacity: 0; }
 }
 @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
 @keyframes slide-up { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
-@keyframes shimmer { from { background-position: -200% 0; } to { background-position: 200% 0; } }
-@keyframes breathe { 0%, 100% { box-shadow: 0 0 0 1px var(--glow), 0 0 0 0 transparent; } 50% { box-shadow: 0 0 0 1px var(--glow), 0 0 22px -4px var(--glow); } }
+@keyframes shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+@keyframes breathe { 0%, 100% { opacity: 0.35; } 50% { opacity: 1; } }
 
 :root {
   color-scheme: dark;
@@ -65,10 +68,28 @@ body {
 .mono { font-family: var(--font-mono); font-feature-settings: 'zero', 'ss02'; }
 .tabular { font-variant-numeric: tabular-nums; }
 
-/* Activité discrète : bordure lumineuse qui respire pendant le travail. */
-.glow-working { --glow: color-mix(in oklab, var(--color-working) 45%, transparent); animation: breathe 2.8s ease-in-out infinite; }
-.glow-waiting { --glow: color-mix(in oklab, var(--color-waiting) 60%, transparent); animation: breathe 1.6s ease-in-out infinite; }
-.glow-error { box-shadow: 0 0 0 1px color-mix(in oklab, var(--color-error) 55%, transparent); }
+/* Activité discrète : halo qui respire pendant le travail. Animé en opacité sur un pseudo-élément
+   (composité par le GPU) plutôt qu'en box-shadow (repeint à chaque image). */
+.glow-working, .glow-waiting, .glow-error { position: relative; isolation: isolate; }
+.glow-working::after, .glow-waiting::after, .glow-error::after {
+  content: ''; position: absolute; inset: -1px; border-radius: inherit; pointer-events: none; z-index: -1;
+  box-shadow: 0 0 0 1px var(--glow), 0 0 24px -6px var(--glow);
+  transition: box-shadow 0.6s var(--ease-out-expo);
+}
+.glow-working { --glow: color-mix(in oklab, var(--color-working) 50%, transparent); }
+.glow-working::after { animation: breathe 3.2s cubic-bezier(0.45, 0, 0.55, 1) infinite; }
+.glow-waiting { --glow: color-mix(in oklab, var(--color-waiting) 65%, transparent); }
+.glow-waiting::after { animation: breathe 1.8s cubic-bezier(0.45, 0, 0.55, 1) infinite; }
+.glow-error { --glow: color-mix(in oklab, var(--color-error) 55%, transparent); }
+.glow-error::after { box-shadow: 0 0 0 1px var(--glow); }
+
+/* Changements d'état fluides (couleurs des pastilles, bordures, textes). */
+.status-transition { transition: color 0.5s var(--ease-out-expo), background-color 0.5s var(--ease-out-expo), border-color 0.5s var(--ease-out-expo); }
+
+/* Survol des cartes : élévation courte et amortie. */
+.lift { transition: transform 0.35s var(--ease-out-expo), border-color 0.25s ease, background-color 0.25s ease; will-change: transform; }
+.lift:hover { transform: translateY(-2px); }
+.lift:active { transform: translateY(0) scale(0.995); transition-duration: 0.12s; }
 
 .shimmer-line {
   background: linear-gradient(90deg, transparent 0%, color-mix(in oklab, var(--color-working) 70%, transparent) 50%, transparent 100%);
@@ -89,6 +110,10 @@ body {
 .react-flow__controls-button:hover { background: var(--color-hover); }
 .react-flow__minimap { background: var(--color-panel); border: 1px solid var(--color-line); border-radius: 8px; }
 .react-flow__node { cursor: pointer; }
+/* Les nœuds glissent vers leur nouvelle position quand le graphe se réorganise. */
+.react-flow__node { transition: transform 0.6s var(--ease-out-expo); }
+.react-flow.dragging .react-flow__node, .react-flow__node.dragging { transition: none; }
+.react-flow__edge-path { transition: stroke 0.5s var(--ease-out-expo), opacity 0.5s var(--ease-out-expo); }
 .react-flow__node-group { background: transparent; border: none; padding: 0; }
 
 @media (prefers-reduced-motion: reduce) {

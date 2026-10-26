@@ -1,4 +1,5 @@
 import { memo } from 'react';
+import { AnimatePresence, motion } from 'motion/react';
 import { Link } from 'react-router-dom';
 import { Bot, KeyRound, Plug, Sparkles, TerminalSquare, TriangleAlert } from 'lucide-react';
 import { ago, cx, PLATFORM_LABEL, shortPath, useNow } from '../lib/format.ts';
@@ -15,11 +16,15 @@ export const SessionCard = memo(function SessionCard({ session: s }: { session: 
     <Link
       to={`/sessions/${s.id}`}
       className={cx(
-        'group relative flex flex-col rounded-xl border border-line bg-panel p-4 transition-[border-color,background,transform] duration-200 hover:border-line-strong hover:bg-raised/60 hover:-translate-y-px animate-slide-up overflow-hidden',
+        'group relative flex h-full flex-col rounded-xl border border-line bg-panel p-4 lift status-transition hover:border-line-strong hover:bg-raised/60',
         glow, s.status === 'ended' && 'opacity-60',
       )}
     >
-      {s.status === 'working' && <div className="absolute inset-x-0 top-0 h-px shimmer-line" />}
+      <AnimatePresence>
+        {s.status === 'working' && (
+          <motion.div key="shimmer" className="absolute inset-x-4 top-0 h-px shimmer-line" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.6 }} />
+        )}
+      </AnimatePresence>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2 min-w-0">
@@ -31,7 +36,7 @@ export const SessionCard = memo(function SessionCard({ session: s }: { session: 
         <StatusPill status={s.status} />
       </div>
 
-      <div className="mt-3 min-h-[38px] text-[12.5px] leading-snug">
+      <div className="mt-3 min-h-[38px] text-[12.5px] leading-snug relative">
         {s.status === 'waiting' && s.waitingFor ? (
           <p className="flex gap-1.5 text-waiting"><KeyRound size={13} className="mt-0.5 shrink-0" /><span className="line-clamp-2">{s.waitingFor}</span></p>
         ) : s.status === 'error' && s.lastError ? (

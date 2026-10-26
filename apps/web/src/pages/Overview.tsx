@@ -1,11 +1,13 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { AnimatePresence, LayoutGroup, motion } from 'motion/react';
 import { Link } from 'react-router-dom';
 import { Activity, AlertOctagon, Hourglass, Layers, Radio, Server } from 'lucide-react';
 import type { SessionStatus } from '../../../../packages/protocol/src/index.ts';
 import { cx, PLATFORM_LABEL } from '../lib/format.ts';
 import { useLive, type Session } from '../lib/live.ts';
 import { SessionCard } from '../components/SessionCard.tsx';
-import { EventRow } from '../components/EventRow.tsx';
+import { EventList } from '../components/EventList.tsx';
+import { AnimatedNumber } from '../components/AnimatedNumber.tsx';
 import { Empty, PageHeader, Panel, Spinner } from '../components/ui.tsx';
 
 const ORDER: Record<SessionStatus, number> = { waiting: 0, error: 1, working: 2, idle: 3, unknown: 4, ended: 5 };
@@ -16,13 +18,19 @@ const FILTERS: { key: Filter; label: string }[] = [
   { key: 'error', label: 'Erreur' }, { key: 'idle', label: 'Inactives' }, { key: 'ended', label: 'Terminées' }, { key: 'all', label: 'Toutes' },
 ];
 
-function Stat({ icon: Icon, label, value, sub, tone }: { icon: typeof Server; label: string; value: number | string; sub?: string; tone?: string }) {
+function Stat({ icon: Icon, label, value, total, sub, tone, index }: { icon: typeof Server; label: string; value: number; total?: number; sub?: string; tone?: string; index: number }) {
   return (
-    <div className="rounded-xl border border-line bg-panel px-4 py-3.5 animate-slide-up">
-      <div className="flex items-center gap-1.5 text-[11.5px] text-muted"><Icon size={13} className={tone ?? 'text-faint'} />{label}</div>
-      <div className={cx('mt-1.5 text-[24px] font-semibold tracking-[-0.02em] tabular leading-none', tone)}>{value}</div>
+    <motion.div
+      initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1], delay: index * 0.04 }}
+      className="rounded-xl border border-line bg-panel px-4 py-3.5"
+    >
+      <div className="flex items-center gap-1.5 text-[11.5px] text-muted"><Icon size={13} className={cx('status-transition', tone ?? 'text-faint')} />{label}</div>
+      <div className={cx('mt-1.5 text-[24px] font-semibold tracking-[-0.02em] tabular leading-none status-transition', tone)}>
+        <AnimatedNumber value={value} />{total !== undefined && <span className="text-faint">/<AnimatedNumber value={total} /></span>}
+      </div>
       {sub && <div className="mt-1.5 text-[11px] text-faint truncate">{sub}</div>}
-    </div>
+    </motion.div>
   );
 }
 
@@ -33,6 +41,8 @@ export function Overview() {
   const events = useLive((s) => s.events);
   const [filter, setFilter] = useState<Filter>('live');
   const [machineFilter, setMachineFilter] = useState<string | null>(null);
+  // Entrée échelonnée uniquement au premier affichage ; ensuite, seules les nouvelles cartes s'animent.
+  const firstPaint = useRef(true);
 
   const all = useMemo(() => [...sessions.values()], [sessions]);
   const counts = useMemo(() => {
@@ -50,6 +60,12 @@ export function Overview() {
     return l.sort((a, b) => ORDER[a.status] - ORDER[b.status] || b.lastEventAt - a.lastEventAt);
   }, [all, filter, machineFilter]);
 
+  useEffect(() => {
+    if (!loaded) return;
+    const t = setTimeout(() => { firstPaint.current = false; }, 800);
+    return () => clearTimeout(t);
+  }, [loaded]);
+
   if (!loaded) return <div className="h-full grid place-items-center text-faint"><Spinner /></div>;
 
   return (
@@ -60,12 +76,12 @@ export function Overview() {
       />
 
       <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3 mb-6">
-        <Stat icon={Server} label="Machines connectées" value={`${online.length}/${machines.size}`} sub={online.map((m) => m.name).join(', ') || 'aucune'} />
-        <Stat icon={Layers} label="Sessions détectées" value={all.length - counts.ended} sub={`${counts.ended} terminée${counts.ended > 1 ? 's' : ''} (7 j)`} />
-        <Stat icon={Activity} label="Actives" value={counts.working} tone={counts.working ? 'text-working' : undefined} />
-        <Stat icon={Hourglass} label="En attente" value={counts.waiting} tone={counts.waiting ? 'text-waiting' : undefined} sub="validation ou dialogue" />
-        <Stat icon={AlertOctagon} label="En erreur" value={counts.error} tone={counts.error ? 'text-error' : undefined} />
-        <Stat icon={Radio} label="Inactives" value={counts.idle + counts.unknown} sub={counts.unknown ? `${counts.unknown} statut inconnu` : undefined} />
+        <Stat index={0} icon={Server} label="Machines connectées" value={online.length} total={machines.size} sub={online.map((m) => m.name).join(', ') || 'aucune'} />
+        <Stat index={1} icon={Layers} label="Sessions détectées" value={all.length - counts.ended} sub={`${counts.ended} terminée${counts.ended > 1 ? 's' : ''} (7 j)`} />
+        <Stat index={2} icon={Activity} label="Actives" value={counts.working} tone={counts.working ? 'text-working' : undefined} />
+        <Stat index={3} icon={Hourglass} label="En attente" value={counts.waiting} tone={counts.waiting ? 'text-waiting' : undefined} sub="validation ou dialogue" />
+        <Stat index={4} icon={AlertOctagon} label="En erreur" value={counts.error} tone={counts.error ? 'text-error' : undefined} />
+        <Stat index={5} icon={Radio} label="Inactives" value={counts.idle + counts.unknown} sub={counts.unknown ? `${counts.unknown} statut inconnu` : undefined} />
       </div>
 
       {machines.size === 0 ? (
@@ -82,10 +98,11 @@ export function Overview() {
                 const n = f.key === 'all' ? all.length : f.key === 'live' ? all.length - counts.ended : counts[f.key];
                 return (
                   <button key={f.key} onClick={() => setFilter(f.key)} className={cx(
-                    'h-7 px-2.5 rounded-md text-[12px] border transition-colors flex items-center gap-1.5',
-                    filter === f.key ? 'bg-hover border-line-strong text-fg' : 'border-transparent text-muted hover:text-fg',
+                    'relative h-7 px-2.5 rounded-md text-[12px] transition-colors duration-200 flex items-center gap-1.5',
+                    filter === f.key ? 'text-fg' : 'text-muted hover:text-fg',
                   )}>
-                    {f.label}<span className="text-faint tabular">{n}</span>
+                    {filter === f.key && <motion.span layoutId="overview-filter" className="absolute inset-0 rounded-md bg-hover border border-line-strong" transition={{ type: 'spring', stiffness: 520, damping: 40 }} />}
+                    <span className="relative">{f.label}</span><span className="relative text-faint tabular">{n}</span>
                   </button>
                 );
               })}
@@ -100,9 +117,24 @@ export function Overview() {
               )}
             </div>
             {list.length ? (
-              <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-3">
-                {list.map((s) => <SessionCard key={s.id} session={s} />)}
-              </div>
+              <LayoutGroup>
+                <motion.div layout className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-3">
+                  <AnimatePresence mode="popLayout" initial={false}>
+                    {list.map((s, i) => (
+                      <motion.div
+                        key={s.id}
+                        layout
+                        initial={firstPaint.current ? { opacity: 0, y: 10 } : { opacity: 0, scale: 0.96 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.96, transition: { duration: 0.18 } }}
+                        transition={{ layout: { type: 'spring', stiffness: 380, damping: 36 }, default: { duration: 0.4, ease: [0.16, 1, 0.3, 1], delay: firstPaint.current ? Math.min(i, 12) * 0.035 : 0 } }}
+                      >
+                        <SessionCard session={s} />
+                      </motion.div>
+                    ))}
+                  </AnimatePresence>
+                </motion.div>
+              </LayoutGroup>
             ) : (
               <Panel>
                 <Empty icon={<Layers size={26} />} title="Aucune session dans ce filtre">
@@ -113,7 +145,7 @@ export function Overview() {
           </div>
 
           <Panel title="Activité récente" actions={<Link to="/timeline" className="text-[11.5px] text-muted hover:text-fg">Tout voir →</Link>} className="xl:sticky xl:top-6 self-start" bodyClass="max-h-[70vh] overflow-auto py-1">
-            {events.length ? events.slice(0, 40).map((e) => <EventRow key={e.id} event={e} compact />) : (
+            {events.length ? <EventList events={events.slice(0, 40)} compact /> : (
               <Empty title="Aucun événement">Les événements arrivent dès qu’une session Claude Code instrumentée travaille.</Empty>
             )}
           </Panel>

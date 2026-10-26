@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
+import { AnimatePresence, motion } from 'motion/react';
 import { Activity, CornerDownLeft, LayoutGrid, LogOut, Network, ScrollText, Search, Server, Workflow } from 'lucide-react';
 import { api } from '../lib/api.ts';
 import { cx, STATUS } from '../lib/format.ts';
@@ -52,8 +53,10 @@ function Palette({ onClose }: { onClose: () => void }) {
   const go = (to: string) => { navigate(to); onClose(); };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/55 backdrop-blur-[2px] flex items-start justify-center pt-[12vh] px-4 animate-fade-in" onMouseDown={onClose}>
-      <div className="w-full max-w-xl rounded-xl border border-line-strong bg-panel shadow-2xl shadow-black/60 overflow-hidden animate-slide-up" onMouseDown={(e) => e.stopPropagation()}>
+    <motion.div className="fixed inset-0 z-50 bg-black/55 backdrop-blur-[2px] flex items-start justify-center pt-[12vh] px-4" onMouseDown={onClose}
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.16 }}>
+      <motion.div className="w-full max-w-xl rounded-xl border border-line-strong bg-panel shadow-2xl shadow-black/60 overflow-hidden" onMouseDown={(e) => e.stopPropagation()}
+        initial={{ opacity: 0, scale: 0.97, y: -8 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.98, y: -4 }} transition={{ type: 'spring', stiffness: 600, damping: 38 }}>
         <div className="flex items-center gap-2.5 px-4 h-12 border-b border-line">
           <Search size={15} className="text-faint" />
           <input
@@ -74,19 +77,20 @@ function Palette({ onClose }: { onClose: () => void }) {
             <li key={it.key}>
               <button
                 onMouseEnter={() => setIdx(i)} onClick={() => go(it.to)}
-                className={cx('w-full flex items-center gap-3 px-4 h-9 text-left text-[13px]', i === idx ? 'bg-hover text-fg' : 'text-muted')}
+                className={cx('relative w-full flex items-center gap-3 px-4 h-9 text-left text-[13px] transition-colors duration-150', i === idx ? 'text-fg' : 'text-muted')}
               >
-                {it.status ? <StatusDot status={it.status} size={7} /> : <span className="w-[7px]" />}
-                <span className="truncate flex-1">{it.label}</span>
-                <span className="text-[11px] text-faint">{it.hint}</span>
-                {i === idx && <CornerDownLeft size={12} className="text-faint" />}
+                {i === idx && <motion.span layoutId="palette-active" className="absolute inset-x-1.5 inset-y-0 rounded-md bg-hover -z-0" transition={{ type: 'spring', stiffness: 700, damping: 45 }} />}
+                <span className="relative flex items-center">{it.status ? <StatusDot status={it.status} size={7} /> : <span className="w-[7px]" />}</span>
+                <span className="relative truncate flex-1">{it.label}</span>
+                <span className="relative text-[11px] text-faint">{it.hint}</span>
+                {i === idx && <CornerDownLeft size={12} className="relative text-faint" />}
               </button>
             </li>
           ))}
           {!items.length && <li className="px-4 py-6 text-center text-[12.5px] text-faint">Aucun résultat</li>}
         </ul>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }
 
@@ -122,12 +126,22 @@ export function Shell({ children, user }: { children: ReactNode; user: string })
         <nav className="flex-1 px-2 space-y-px">
           {NAV.map(({ to, label, icon: Icon, end }) => (
             <NavLink key={to} to={to} end={end} className={({ isActive }) => cx(
-              'flex items-center gap-2.5 rounded-md px-2.5 h-8 text-[13px] transition-colors',
-              isActive ? 'bg-hover text-fg' : 'text-muted hover:text-fg hover:bg-hover/60',
+              'relative flex items-center gap-2.5 rounded-md px-2.5 h-8 text-[13px] transition-colors duration-200',
+              isActive ? 'text-fg' : 'text-muted hover:text-fg',
             )}>
-              <Icon size={15} strokeWidth={1.8} />
-              <span className="flex-1">{label}</span>
-              {to === '/' && waiting > 0 && <span className="rounded-full bg-waiting/15 text-waiting text-[10.5px] font-semibold px-1.5 tabular">{waiting}</span>}
+              {({ isActive }) => (
+                <>
+                  {isActive && <motion.span layoutId="nav-active" className="absolute inset-0 rounded-md bg-hover" transition={{ type: 'spring', stiffness: 520, damping: 42 }} />}
+                  <Icon size={15} strokeWidth={1.8} className="relative" />
+                  <span className="relative flex-1">{label}</span>
+                  <AnimatePresence>
+                    {to === '/' && waiting > 0 && (
+                      <motion.span key="badge" initial={{ scale: 0.6, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.6, opacity: 0 }} transition={{ type: 'spring', stiffness: 600, damping: 30 }}
+                        className="relative rounded-full bg-waiting/15 text-waiting text-[10.5px] font-semibold px-1.5 tabular">{waiting}</motion.span>
+                    )}
+                  </AnimatePresence>
+                </>
+              )}
             </NavLink>
           ))}
         </nav>
@@ -151,15 +165,20 @@ export function Shell({ children, user }: { children: ReactNode; user: string })
         <main className="flex-1 min-h-0 overflow-auto">{children}</main>
         <nav className="md:hidden safe-bottom border-t border-line bg-panel/90 backdrop-blur grid grid-cols-5">
           {NAV.slice(0, 5).map(({ to, label, icon: Icon, end }) => (
-            <NavLink key={to} to={to} end={end} className={({ isActive }) => cx('relative flex flex-col items-center gap-0.5 py-2 text-[10px]', isActive ? 'text-fg' : 'text-faint')}>
-              <Icon size={18} strokeWidth={1.8} />
-              <span className="truncate max-w-full px-1">{label.split(' ')[0]}</span>
-              {to === '/' && waiting > 0 && <span className="absolute top-1 right-[30%] h-2 w-2 rounded-full bg-waiting" />}
+            <NavLink key={to} to={to} end={end} className={({ isActive }) => cx('relative flex flex-col items-center gap-0.5 py-2 text-[10px] transition-colors duration-200', isActive ? 'text-fg' : 'text-faint')}>
+              {({ isActive }) => (
+                <>
+                  {isActive && <motion.span layoutId="mobile-nav-active" className="absolute top-0 inset-x-5 h-0.5 rounded-full bg-accent" transition={{ type: 'spring', stiffness: 520, damping: 40 }} />}
+                  <motion.span whileTap={{ scale: 0.88 }} transition={{ type: 'spring', stiffness: 700, damping: 30 }}><Icon size={18} strokeWidth={1.8} /></motion.span>
+                  <span className="truncate max-w-full px-1">{label.split(' ')[0]}</span>
+                  {to === '/' && waiting > 0 && <span className="absolute top-1 right-[30%] h-2 w-2 rounded-full bg-waiting" />}
+                </>
+              )}
             </NavLink>
           ))}
         </nav>
       </div>
-      {palette && <Palette onClose={() => setPalette(false)} />}
+      <AnimatePresence>{palette && <Palette key="palette" onClose={() => setPalette(false)} />}</AnimatePresence>
     </div>
   );
 }

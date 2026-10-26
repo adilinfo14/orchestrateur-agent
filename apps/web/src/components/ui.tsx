@@ -1,4 +1,5 @@
 import type { ComponentProps, ReactNode } from 'react';
+import { AnimatePresence, motion } from 'motion/react';
 import type { SessionStatus } from '../../../../packages/protocol/src/index.ts';
 import { cx, STATUS } from '../lib/format.ts';
 
@@ -6,18 +7,22 @@ export function StatusDot({ status, size = 8 }: { status: SessionStatus; size?: 
   const live = status === 'working' || status === 'waiting';
   return (
     <span className="relative inline-flex shrink-0" style={{ width: size, height: size }} aria-label={STATUS[status].label}>
-      {live && <span className={cx('absolute inset-0 rounded-full animate-pulse-ring', STATUS[status].color)} />}
-      <span className={cx('relative inline-flex rounded-full w-full h-full', STATUS[status].color)} />
+      {live && <span className={cx('absolute inset-0 rounded-full animate-pulse-ring status-transition', STATUS[status].color)} />}
+      <span className={cx('relative inline-flex rounded-full w-full h-full status-transition', STATUS[status].color)} />
     </span>
   );
 }
 
 export function StatusPill({ status }: { status: SessionStatus }) {
   return (
-    <span className={cx('inline-flex items-center gap-1.5 rounded-full border border-line px-2 py-0.5 text-[11px] font-medium', STATUS[status].text)}>
+    <motion.span layout transition={{ type: 'spring', stiffness: 500, damping: 40 }} className={cx('inline-flex items-center gap-1.5 rounded-full border border-line px-2 py-0.5 text-[11px] font-medium status-transition whitespace-nowrap', STATUS[status].text)}>
       <StatusDot status={status} size={6} />
-      {STATUS[status].label}
-    </span>
+      <AnimatePresence mode="popLayout" initial={false}>
+        <motion.span key={status} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}>
+          {STATUS[status].label}
+        </motion.span>
+      </AnimatePresence>
+    </motion.span>
   );
 }
 
@@ -46,7 +51,7 @@ export function Button({ variant = 'subtle', size = 'md', className, ...rest }: 
   return (
     <button
       {...rest}
-      className={cx('inline-flex items-center justify-center gap-1.5 rounded-md font-medium transition-[background,border,color,transform] duration-150 active:scale-[0.98] disabled:opacity-40 disabled:pointer-events-none select-none', v, s, className)}
+      className={cx('inline-flex items-center justify-center gap-1.5 rounded-md font-medium transition-[background,border,color,transform] duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-[0.97] active:duration-75 disabled:opacity-40 disabled:pointer-events-none select-none', v, s, className)}
     />
   );
 }
