@@ -1,0 +1,22 @@
+{
+  "name": "agent-command-center",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Cockpit de supervision et de pilotage des sessions Claude Code multi-machines",
+  "engines": { "node": ">=22.18" },
+  "workspaces": ["packages/*", "apps/*"],
+  "scripts": {
+    "dev:server": "npm run dev -w @acc/server",
+    "dev:web": "npm run dev -w @acc/web",
+    "dev:collector": "npm run dev -w @acc/collector",
+    "build": "npm run build -w @acc/web",
+    "typecheck": "tsc -p tsconfig.json --noEmit && npm run typecheck -w @acc/web",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "^5.9.0",
+    "vitest": "^5.0.5"
+  }
+}

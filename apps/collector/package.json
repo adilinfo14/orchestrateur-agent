@@ -1,0 +1,7 @@
+{
+  "name": "@acc/collector", "private": true, "version": "0.1.0", "type": "module",
+  "bin": { "acc-collector": "src/cli.ts" },
+  "scripts": { "dev": "node --watch src/cli.ts run", "start": "node src/cli.ts run" },
+  "dependencies": { "@acc/protocol": "*", "@anthropic-ai/claude-agent-sdk": "^0.3.310", "ws": "^8.22.0", "zod": "^4.6.7" },
+  "devDependencies": { "@types/ws": "^8.5.0" }
+}

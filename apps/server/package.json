@@ -1,0 +1,5 @@
+{
+  "name": "@acc/server", "private": true, "version": "0.1.0", "type": "module",
+  "scripts": { "dev": "node --watch src/main.ts", "start": "node src/main.ts", "admin": "node src/admin.ts" },
+  "dependencies": { "@acc/protocol": "*", "@fastify/cookie": "^11.1.3", "@fastify/static": "^10.1.7", "@fastify/websocket": "^11.3.4", "fastify": "^5.12.7", "zod": "^4.6.7" }
+}
