@@ -63,6 +63,8 @@ export interface SpawnOptions {
  */
 export class SdkSessions {
   private sessions = new Map<string, Managed>();
+  /** Sessions arrêtées volontairement : leur abandon n'est pas une erreur. */
+  private stopping = new Set<string>();
 
   private emit: (e: NewEvent) => void;
   private log: (m: string) => void;
@@ -128,14 +130,16 @@ export class SdkSessions {
           }
         } catch (err) {
           const message = (err as Error).message;
-          this.log(`session SDK terminée en erreur : ${message}`);
-          if (sessionId) this.emit({ source: 'sdk', type: 'ManagedSessionError', sessionId, cwd: o.cwd, data: { error: message.slice(0, 2000) } });
+          const expected = sessionId !== null && this.stopping.has(sessionId);
+          this.log(expected ? `session SDK ${sessionId} arrêtée` : `session SDK terminée en erreur : ${message}`);
+          if (sessionId && !expected) this.emit({ source: 'sdk', type: 'ManagedSessionError', sessionId, cwd: o.cwd, data: { error: message.slice(0, 2000) } });
           if (!settled) { settled = true; reject(new Error(message)); }
         } finally {
           if (sessionId) {
             for (const p of pending.values()) p.resolve({ behavior: 'deny', message: 'Session fermée' });
             this.sessions.delete(sessionId);
-            this.emit({ source: 'sdk', type: 'ManagedSessionClosed', sessionId, cwd: o.cwd, data: {} });
+            this.emit({ source: 'sdk', type: 'ManagedSessionClosed', sessionId, cwd: o.cwd, data: { stoppedByCockpit: this.stopping.has(sessionId) } });
+            this.stopping.delete(sessionId);
           }
           if (!settled) { settled = true; reject(new Error('La session s’est terminée avant d’annoncer son identifiant')); }
         }
@@ -179,6 +183,7 @@ export class SdkSessions {
   stop(sessionId: string): void {
     const s = this.sessions.get(sessionId);
     if (!s) throw new Error('Session SDK inconnue sur ce collecteur');
+    this.stopping.add(sessionId);
     s.input.close();
     s.abort.abort();
   }

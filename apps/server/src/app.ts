@@ -18,6 +18,8 @@ export interface AppOptions {
   webDist?: string;
   secureCookies?: boolean;
   logger?: boolean;
+  /** À activer uniquement derrière un proxy de confiance (ex. tailscale serve). */
+  trustProxy?: boolean;
 }
 
 const COOKIE = 'acc_session';
@@ -27,7 +29,7 @@ declare module 'fastify' {
 }
 
 export async function buildApp(opts: AppOptions): Promise<{ app: FastifyInstance; store: Store; commands: Commands; orchestrator: Orchestrator }> {
-  const app = Fastify({ logger: opts.logger ?? false, bodyLimit: 2_000_000, trustProxy: true });
+  const app = Fastify({ logger: opts.logger ?? false, bodyLimit: 2_000_000, trustProxy: opts.trustProxy ?? false });
   const store = new Store(opts.db);
   const collectors = new Map<string, WebSocket>();
 

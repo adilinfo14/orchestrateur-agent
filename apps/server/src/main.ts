@@ -4,7 +4,7 @@ import { openDb } from './db.ts';
 import { hasUsers } from './auth.ts';
 
 const db = openDb(dbPath());
-const { app, store } = await buildApp({ db, webDist: config.webDist, secureCookies: config.secureCookies, logger: true });
+const { app, store } = await buildApp({ db, webDist: config.webDist, secureCookies: config.secureCookies, trustProxy: config.trustProxy, logger: true });
 
 if (!hasUsers(db)) app.log.warn('Aucun utilisateur : créez-en un avec « npm run admin -w @acc/server -- set-password <utilisateur> »');
 

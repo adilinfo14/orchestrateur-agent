@@ -34,7 +34,7 @@ export class AgentsCliWatcher {
 
   private run(): Promise<unknown[]> {
     return new Promise((resolve, reject) => {
-      execFile(this.claudeBin, ['agents', '--json', '--all'], { timeout: 8000, maxBuffer: 4 * 1024 * 1024 }, (err, stdout) => {
+      execFile(this.claudeBin, ['agents', '--json', '--all'], { timeout: 8000, maxBuffer: 4 * 1024 * 1024, shell: process.platform === 'win32' }, (err, stdout) => {
         if (err) return reject(err);
         try {
           const parsed = JSON.parse(stdout) as unknown;

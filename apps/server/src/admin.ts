@@ -32,11 +32,23 @@ switch (cmd) {
     console.log(`Code d'inscription (15 min, usage unique) : ${code}`);
     break;
   }
+  case 'delete-user': {
+    if (!arg) throw new Error('Usage : admin delete-user <utilisateur>');
+    db.prepare('DELETE FROM ui_sessions WHERE username = ?').run(arg);
+    const r = db.prepare('DELETE FROM users WHERE username = ?').run(arg);
+    audit(db, 'cli', 'user.deleted', arg, null, null);
+    console.log(Number(r.changes) ? `Utilisateur ${arg} supprimé.` : `Utilisateur ${arg} introuvable.`);
+    break;
+  }
+  case 'users': {
+    console.table(db.prepare('SELECT username, created_at FROM users').all());
+    break;
+  }
   case 'machines': {
     console.table(db.prepare('SELECT id, name, hostname, platform, allow_control, revoked, last_seen_at FROM machines').all());
     break;
   }
   default:
-    console.log('admin <set-password <utilisateur>|enroll-code|machines>');
+    console.log('admin <set-password <utilisateur>|delete-user <utilisateur>|users|enroll-code|machines>');
 }
 db.close();

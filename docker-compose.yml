@@ -1,0 +1,24 @@
+# Déploiement du serveur central. Le serveur n'écoute que sur ACC_BIND_IP (l'IP Tailscale
+# de la machine) : jamais exposé sur Internet ni sur le LAN. Réseau « host » : aucun
+# réseau Docker supplémentaire n'est créé.
+services:
+  acc:
+    build: .
+    image: agent-command-center:latest
+    container_name: agent-command-center
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      ACC_HOST: ${ACC_BIND_IP:?définir ACC_BIND_IP (IP Tailscale)}
+      ACC_PORT: ${ACC_PORT:-7820}
+      ACC_RETENTION_DAYS: ${ACC_RETENTION_DAYS:-30}
+      ACC_SECURE_COOKIES: ${ACC_SECURE_COOKIES:-0}
+      ACC_TRUST_PROXY: ${ACC_TRUST_PROXY:-0}
+    volumes:
+      - acc-data:/data
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://' + process.env.ACC_HOST + ':' + process.env.ACC_PORT + '/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+volumes:
+  acc-data:

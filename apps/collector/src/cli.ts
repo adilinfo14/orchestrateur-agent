@@ -137,7 +137,7 @@ async function main(): Promise<void> {
     case 'install-hooks': {
       const cfg = loadConfig();
       console.log(`Hooks ajoutés (sauvegarde créée à côté) : ${installHooks(cfg.hookPort, cfg.localToken)}`);
-      console.log('Les sessions déjà ouvertes les prendront en compte à leur prochain redémarrage.');
+      console.log('Claude Code recharge généralement les réglages à chaud ; sinon, redémarrez les sessions ouvertes.');
       return;
     }
     case 'uninstall-hooks':
