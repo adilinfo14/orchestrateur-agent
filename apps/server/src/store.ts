@@ -22,6 +22,7 @@ export class Store {
   agents = new Map<string, AgentView>();
   online = new Set<string>();
   private listeners = new Set<(m: ServerToUi) => void>();
+  private ingestListeners = new Set<(events: AccEvent[]) => void>();
 
   db: Db;
 
@@ -39,6 +40,10 @@ export class Store {
   subscribe(fn: (m: ServerToUi) => void): () => void {
     this.listeners.add(fn);
     return () => this.listeners.delete(fn);
+  }
+
+  onIngest(fn: (events: AccEvent[]) => void): void {
+    this.ingestListeners.add(fn);
   }
 
   broadcast(m: ServerToUi): void {
@@ -135,6 +140,7 @@ export class Store {
     for (const ev of fresh) this.broadcast({ t: 'event', event: ev });
     for (const key of touchedAgents) { const a = this.agents.get(key); if (a) this.broadcast({ t: 'agent', agent: a }); }
     for (const id of touchedSessions) { const s = this.sessions.get(id); if (s) this.broadcast({ t: 'session', session: s }); }
+    if (fresh.length) for (const fn of this.ingestListeners) fn(fresh);
     return maxSeq;
   }
 

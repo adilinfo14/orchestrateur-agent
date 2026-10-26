@@ -221,6 +221,43 @@ export interface PendingPermission {
   ts: number;
 }
 
+export type PlanStatus = 'planning' | 'planning_failed' | 'draft' | 'running' | 'blocked' | 'completed' | 'cancelled';
+export type TaskStatus = 'pending' | 'dispatched' | 'reported' | 'verified' | 'failed';
+
+export interface PlanTask {
+  id: string;
+  planId: string;
+  idx: number;
+  title: string;
+  instructions: string;
+  dependsOn: string[];
+  /** Commande dont l'exécution réussie, observée via les hooks, prouve la tâche. */
+  verify: string | null;
+  assigneeSessionId: string | null;
+  status: TaskStatus;
+  dispatchedAt: number | null;
+  commandId: string | null;
+  report: string | null;
+  evidence: { ts: number; eventId: string; command: string; ok: boolean } | null;
+  error: string | null;
+  updatedAt: number;
+}
+
+export interface Plan {
+  id: string;
+  objective: string;
+  machineId: string | null;
+  cwd: string | null;
+  plannerSessionId: string | null;
+  plannerCommandId: string | null;
+  status: PlanStatus;
+  error: string | null;
+  actor: string;
+  createdAt: number;
+  updatedAt: number;
+  tasks: PlanTask[];
+}
+
 /** Messages poussés par le serveur à l'interface. */
 export type ServerToUi =
   | { t: 'hello'; serverTime: number }
@@ -228,7 +265,8 @@ export type ServerToUi =
   | { t: 'session'; session: SessionView }
   | { t: 'agent'; agent: AgentView }
   | { t: 'machine'; machine: MachineView }
-  | { t: 'command'; command: CommandRecord };
+  | { t: 'command'; command: CommandRecord }
+  | { t: 'plan'; plan: Plan };
 
 // ---------- Utilitaires partagés ----------
 

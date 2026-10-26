@@ -11,6 +11,7 @@ import { audit, consumeEnrollCode, createEnrollCode, login, logout, randomToken,
 import { CommandError, Commands } from './commands.ts';
 import type { Db } from './db.ts';
 import { Store } from './store.ts';
+import { Orchestrator, TaskInput } from './orchestrator.ts';
 
 export interface AppOptions {
   db: Db;
@@ -25,7 +26,7 @@ declare module 'fastify' {
   interface FastifyRequest { user: string | null }
 }
 
-export async function buildApp(opts: AppOptions): Promise<{ app: FastifyInstance; store: Store; commands: Commands }> {
+export async function buildApp(opts: AppOptions): Promise<{ app: FastifyInstance; store: Store; commands: Commands; orchestrator: Orchestrator }> {
   const app = Fastify({ logger: opts.logger ?? false, bodyLimit: 2_000_000, trustProxy: true });
   const store = new Store(opts.db);
   const collectors = new Map<string, WebSocket>();
@@ -37,6 +38,11 @@ export async function buildApp(opts: AppOptions): Promise<{ app: FastifyInstance
     return true;
   };
   const commands = new Commands(store, dispatch as never);
+  const orchestrator = new Orchestrator(store, commands, (plan) => store.broadcast({ t: 'plan', plan }));
+  store.onIngest((events) => orchestrator.onEvents(events));
+  commands.onFinish((c) => orchestrator.onCommandFinished(c));
+  orchestrator.start();
+  app.addHook('onClose', async () => orchestrator.stop());
 
   await app.register(fastifyCookie);
   await app.register(fastifyWebsocket, { options: { maxPayload: 4 * 1024 * 1024 } });
@@ -198,6 +204,53 @@ export async function buildApp(opts: AppOptions): Promise<{ app: FastifyInstance
   app.get('/api/audit', async () =>
     opts.db.prepare('SELECT id, ts, actor, action, target, detail, ip FROM audit ORDER BY ts DESC LIMIT 300').all());
 
+  // ---------- Orchestration ----------
+
+  const planError = (reply: FastifyReply, e: unknown) => fail(reply, e instanceof CommandError ? e.status : 400, (e as Error).message);
+
+  app.get('/api/plans', async () => orchestrator.list());
+
+  app.get<{ Params: { id: string } }>('/api/plans/:id', async (req, reply) => orchestrator.get(req.params.id) ?? fail(reply, 404, 'Plan inconnu'));
+
+  app.post('/api/plans', async (req, reply) => {
+    const body = z.union([
+      z.object({ objective: z.string().min(3).max(4000), machineId: z.string().max(64), cwd: z.string().min(1).max(4096), confirmed: z.literal(true) }),
+      z.object({ objective: z.string().min(3).max(4000), tasks: z.array(TaskInput).min(1).max(20) }),
+    ]).safeParse(req.body);
+    if (!body.success) return fail(reply, 400, 'Requête invalide');
+    try {
+      return 'tasks' in body.data
+        ? orchestrator.createManual(body.data.objective, body.data.tasks, req.user!, req.ip)
+        : orchestrator.createWithPlanner(body.data.objective, body.data.machineId, body.data.cwd, req.user!, req.ip);
+    } catch (e) { return planError(reply, e); }
+  });
+
+  app.put<{ Params: { id: string } }>('/api/plans/:id/tasks', async (req, reply) => {
+    const body = z.object({ tasks: z.array(TaskInput).min(1).max(20) }).safeParse(req.body);
+    if (!body.success) return fail(reply, 400, 'Tâches invalides');
+    try { orchestrator.replaceTasks(req.params.id, body.data.tasks); audit(opts.db, req.user!, 'plan.edited', req.params.id, { tasks: body.data.tasks.length }, req.ip); return orchestrator.get(req.params.id); }
+    catch (e) { return planError(reply, e); }
+  });
+
+  app.post<{ Params: { id: string } }>('/api/plans/:id/start', async (req, reply) => {
+    if (!z.object({ confirmed: z.literal(true) }).safeParse(req.body).success) return fail(reply, 428, 'Confirmation requise');
+    try { return orchestrator.startPlan(req.params.id, req.user!, req.ip); } catch (e) { return planError(reply, e); }
+  });
+
+  app.post<{ Params: { id: string } }>('/api/plans/:id/cancel', async (req, reply) => {
+    try { return orchestrator.cancel(req.params.id, req.user!, req.ip); } catch (e) { return planError(reply, e); }
+  });
+
+  app.post<{ Params: { id: string; taskId: string } }>('/api/plans/:id/tasks/:taskId/verify', async (req, reply) => {
+    const body = z.object({ note: z.string().min(3).max(500), confirmed: z.literal(true) }).safeParse(req.body);
+    if (!body.success) return fail(reply, 400, 'Justification et confirmation requises');
+    try { return orchestrator.markVerified(req.params.id, req.params.taskId, body.data.note, req.user!, req.ip); } catch (e) { return planError(reply, e); }
+  });
+
+  app.post<{ Params: { id: string; taskId: string } }>('/api/plans/:id/tasks/:taskId/retry', async (req, reply) => {
+    try { return orchestrator.retryTask(req.params.id, req.params.taskId, req.user!, req.ip); } catch (e) { return planError(reply, e); }
+  });
+
   // ---------- WebSocket collecteurs ----------
 
   app.register(async (scope) => {
@@ -268,5 +321,5 @@ export async function buildApp(opts: AppOptions): Promise<{ app: FastifyInstance
     });
   }
 
-  return { app, store, commands };
+  return { app, store, commands, orchestrator };
 }

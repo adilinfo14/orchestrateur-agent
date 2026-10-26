@@ -30,6 +30,9 @@ const toRecord = (r: Row): CommandRecord => ({
  */
 export class Commands {
   private timers = new Map<string, NodeJS.Timeout>();
+  private finishListeners = new Set<(c: CommandRecord) => void>();
+
+  onFinish(fn: (c: CommandRecord) => void): void { this.finishListeners.add(fn); }
 
   private store: Store;
   private dispatch: Dispatch;
@@ -138,6 +141,7 @@ export class Commands {
     if (c) {
       audit(this.store.db, 'system', `command.${status}`, c.machineId, { id, type: c.type, error }, null);
       this.store.broadcast({ t: 'command', command: c });
+      for (const fn of this.finishListeners) fn(c);
     }
   }
 }

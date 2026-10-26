@@ -1,0 +1,99 @@
+@import 'tailwindcss';
+@import '@fontsource-variable/inter';
+@import '@fontsource-variable/jetbrains-mono';
+@import '@xyflow/react/dist/style.css';
+
+@theme {
+  --font-sans: 'Inter Variable', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono Variable', ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --color-bg: #08090b;
+  --color-panel: #0e0f12;
+  --color-raised: #14161a;
+  --color-hover: #1a1c21;
+  --color-line: #1f2227;
+  --color-line-strong: #2a2e35;
+  --color-fg: #e8eaed;
+  --color-muted: #8b919c;
+  --color-faint: #5b616b;
+  --color-accent: #d97757;
+  --color-accent-soft: #d9775722;
+
+  --color-working: #4f9dff;
+  --color-waiting: #f2b544;
+  --color-idle: #5f6672;
+  --color-error: #f0616d;
+  --color-ok: #3ecf8e;
+  --color-ended: #3a3f47;
+
+  --animate-pulse-ring: pulse-ring 1.8s cubic-bezier(0.2, 0.6, 0.3, 1) infinite;
+  --animate-fade-in: fade-in 0.22s ease-out both;
+  --animate-slide-up: slide-up 0.26s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  --animate-shimmer: shimmer 2.4s linear infinite;
+}
+
+@keyframes pulse-ring {
+  0% { transform: scale(1); opacity: 0.55; }
+  80%, 100% { transform: scale(2.6); opacity: 0; }
+}
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes slide-up { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@keyframes shimmer { from { background-position: -200% 0; } to { background-position: 200% 0; } }
+@keyframes breathe { 0%, 100% { box-shadow: 0 0 0 1px var(--glow), 0 0 0 0 transparent; } 50% { box-shadow: 0 0 0 1px var(--glow), 0 0 22px -4px var(--glow); } }
+
+:root {
+  color-scheme: dark;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: 'cv11', 'ss01', 'ss03';
+}
+
+html, body, #root { height: 100%; }
+body {
+  background: var(--color-bg);
+  color: var(--color-fg);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  line-height: 1.45;
+  overscroll-behavior: none;
+}
+
+::selection { background: var(--color-accent-soft); }
+
+* { scrollbar-width: thin; scrollbar-color: var(--color-line-strong) transparent; }
+
+.mono { font-family: var(--font-mono); font-feature-settings: 'zero', 'ss02'; }
+.tabular { font-variant-numeric: tabular-nums; }
+
+/* Activité discrète : bordure lumineuse qui respire pendant le travail. */
+.glow-working { --glow: color-mix(in oklab, var(--color-working) 45%, transparent); animation: breathe 2.8s ease-in-out infinite; }
+.glow-waiting { --glow: color-mix(in oklab, var(--color-waiting) 60%, transparent); animation: breathe 1.6s ease-in-out infinite; }
+.glow-error { box-shadow: 0 0 0 1px color-mix(in oklab, var(--color-error) 55%, transparent); }
+
+.shimmer-line {
+  background: linear-gradient(90deg, transparent 0%, color-mix(in oklab, var(--color-working) 70%, transparent) 50%, transparent 100%);
+  background-size: 200% 100%;
+  animation: var(--animate-shimmer);
+}
+
+.bg-grid {
+  background-image: radial-gradient(circle at 1px 1px, #ffffff0d 1px, transparent 0);
+  background-size: 22px 22px;
+}
+
+/* React Flow : thème sombre cohérent */
+.react-flow { --xy-background-color: transparent; --xy-edge-stroke: #2f343c; --xy-edge-stroke-selected: var(--color-accent); }
+.react-flow__attribution { display: none; }
+.react-flow__controls { box-shadow: none; border: 1px solid var(--color-line); border-radius: 8px; overflow: hidden; }
+.react-flow__controls-button { background: var(--color-panel); border-bottom: 1px solid var(--color-line); fill: var(--color-muted); }
+.react-flow__controls-button:hover { background: var(--color-hover); }
+.react-flow__minimap { background: var(--color-panel); border: 1px solid var(--color-line); border-radius: 8px; }
+.react-flow__node { cursor: pointer; }
+.react-flow__node-group { background: transparent; border: none; padding: 0; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; }
+}
+
+.safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
+.safe-top { padding-top: env(safe-area-inset-top); }
